@@ -1,27 +1,84 @@
-<div align="right">
-  <a href="https://travis-ci.org/oscarbranson/latools"><img src="https://travis-ci.org/oscarbranson/latools.svg?branch=gui" alt="TravisCI build" height="18"></a>
-  <a href="http://latools.readthedocs.io/en/latest/?badge=latest"><img src='http://readthedocs.org/projects/latools/badge/?version=latest' alt='Documentation Status' height="18"/></a>
-  <a href="https://badge.fury.io/py/latools"><img src="https://badge.fury.io/py/latools.svg" alt="PyPI version" height="18"></a>
-</div>
+# LAtools + Range selection feature
+
+## About this feature
+* LAtools is an amazing tool for LA-ICP-MS data reduction created by Oscar Branson.
+(https://github.com/oscarbranson/latools)
+* However, when I used this LAtools to reduce my own data, I realized that the existing `filters` were not very useful for my data. I really needed to **select the ranges of the signal manually** to exclude/include small inclusions.
+* I understand that this feature is not something Dr. Oscar intended; That's why I made it into separete branch in a separate repository.
+* Also, there are some **bugfix** included in this version, most of them I already reported [here](https://github.com/oscarbranson/latools/issues)
 
 
-# LAtools
-**Python tools for processing Laser Ablation mass spectrometry data**
+## How to use  
+### How to exclude inclusions in SRM
+* Unfortunately, some elements in some SRMs are not completely homogenus. Let's say you hit the inclusions in the first SRM like this;
+![Sorry!](/figs/inclusion-sample-1.png)
 
-## Citing LAtools
+* First, you can do this to know the currently selected region. If the `startIndex` is 56 and the `endIndex` is 95 that means the current signal region is from the 56th data point to 95th data point in this data file.
+```
+eg.stds[0].filter_select_range()
+>>>startIndex = 56 endIndex=95
 
->[LAtools: a data analysis package for the reproducible reduction of LA-ICPMS data. 2018. Branson, O., Fehrenbacher, J., Vetter, L., Sadekov, A.Y., Eggins, S.M., Spero, H.J. *Chemical Geology* **504**: 83-95. doi:10.1016/j.chemgeo.2018.10.029](docs/Branson_2019_ChemicalGeology_LAtools.pdf)
+```
 
-## Installation
-Using `pip`:
+* Then you can do like:
+```
+eg.stds[0].filter_select_range(startIndex=59, endIndex=75)
+eg.stds[0].filt.on(filt='59-75')
+eg.stds[0].tplot(analytes = 'Cu63', filt = True, ranges=True)
+```
+![Sorry again!](/figs/inclusion-sample-2.png)
+Now the inclusion in the right area is excluded.
 
-    pip install latools
+* If you don't like the filtered range, of course you can turn it off by using `eg.stds[0].filt.off()`
 
-Read the [**User Guide**](http://latools.readthedocs.io) for some info on how to get started. 
+* When you want to calibrate the data with the active filters, do
+```
+eg.calibrate(srmfilt=True)
+```
+* Be aware that the filters applied for the SRMs does not appear in `eg.filter_status()`
 
-## Want to Contribute?
-We welcome contributors! You don't even need to be Python-literate - if you have any feedback or suggestions, please open an [issue](https://github.com/oscarbranson/latools/issues) on the GitHub pages, and we'll get to it as soon as we can.
 
-If you're feeling a bit more adventurous, we'd welcome improvements to the code, and particularly the documentation - just create a fork of the project, and get coding! To work on documentation, edit the markdown documents in the [docs/source](https://github.com/oscarbranson/latools/tree/master/docs/source) directory. To edit the code itself, work on the module in the [latools](https://github.com/oscarbranson/latools/blob/master/latools/) directory.
+### How to calculate the sample stats with a given region
+* Sometimes you want to calculate both the stats with inclusion and without exclusion for some samples. For example, you want to calculate the data both with inclusion and without inclusion like this:
 
-*Join the [mailing list](https://groups.google.com/forum/#!forum/latools) to be kept updated.*
+| Sample   | Cu | Ag |
+|----------|----|----|
+|1         | -  | -  |
+|2-with-inc| -  | -  |
+|2-excl-inc| -  | -  |
+|3         | -  | -  |
+|4         | -  | -  |
+
+* First, you run,
+```
+a = eg.sample_branch_prepare(samples = ['2'])
+```
+By default, it generates numpy array containing two sample names: '2-with-inc' and '2-excl-inc'.
+
+If you do
+```
+a = sample_branch_prepare(samples = ['2'], double=False)
+```
+it generates numpy array containing one sample name: '2-selected'.
+You can also choose your favorite name by filling the `newfnames` parameter.
+
+* Then you do
+```
+eg.sample_branch_append(a, ['2', '2'])
+```
+`a` is the array of the new sample names we just generated.
+['2', '2'] is the list of original samples corresponds to the sample names.
+By doing this two E object named '2-with-inc' and '2-excl-inc' is added to the original `analyse` object (`eg`).
+
+* E object is the inheritance class of D object. You can use all the method written for D object. When the E object is initialized by `sample_branch_append()` it is a simple copy of the original D object of the given sample, and all the calculated value is already in there. However, once generated, E object is independent from the original D object, and you can apply different filters/methods to obtain stats.
+
+  
+
+
+
+
+
+
+
+ 
+
