@@ -11,7 +11,7 @@
 ## How to use  
 ### How to exclude inclusions in SRM
 * Unfortunately, some elements in some SRMs are not completely homogenus. Let's say you hit the inclusions in the first SRM like this;
-![Sorry!](/figs/inclusion-sample-1.png)
+![Sorry!](/fig/inclusion-sample-1.png)
 
 * First, you can do this to know the currently selected region. If the `startIndex` is 56 and the `endIndex` is 95 that means the current signal region is from the 56th data point to 95th data point in this data file.
 ```
@@ -26,7 +26,7 @@ eg.stds[0].filter_select_range(startIndex=59, endIndex=75)
 eg.stds[0].filt.on(filt='59-75')
 eg.stds[0].tplot(analytes = 'Cu63', filt = True, ranges=True)
 ```
-![Sorry again!](/figs/inclusion-sample-2.png)
+![Sorry again!](/fig/inclusion-sample-2.png)
 Now the inclusion in the right area is excluded.
 
 * If you don't like the filtered range, of course you can turn it off by using `eg.stds[0].filt.off()`
