@@ -392,6 +392,7 @@ def test_dataformat(data_file, dataformat_file, name_mode='file_names'):
             raise
     
     print('    checking dimensions...')
+    read_data = np.delete(read_data, read_data.shape[0]-1, 0) #190211added 
     if read_data.shape[0] != len(analytes) + 1:
         print('        ***PROBLEM: ' + 
               'There are {:.0f} data columns, but {:.0f} column names.\n'.format(read_data.shape[0], len(analytes) + 1) +

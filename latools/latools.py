@@ -15,6 +15,7 @@ import pandas as pd
 import pkg_resources as pkgrs
 import uncertainties as unc
 import uncertainties.unumpy as un
+
 from sklearn.preprocessing import minmax_scale
 
 from scipy.optimize import curve_fit
@@ -24,6 +25,7 @@ from .filtering import filters
 from .filtering.classifier_obj import classifier
 
 from .D_obj import D
+from .D_obj import E
 from .helpers.helpers import (rolling_window, enumerate_bool,
                       un_interp1d, pretty_element, get_date,
                       unitpicker, rangecalc, Bunch, calc_grads,
@@ -35,6 +37,7 @@ from .helpers.stat_fns import *
 from .helpers import utils
 from .helpers import srm as srms
 from .helpers.progressbars import progressbar
+
 
 idx = pd.IndexSlice  # multi-index slicing!
 
@@ -293,7 +296,7 @@ class analyse(object):
         if internal_standard in self.analytes:
             self.internal_standard = internal_standard
         else:
-            ValueError('The internal standard ({}) is not amongst the'.format(internal_standard) +
+            raise ValueError('The internal standard ({}) is not amongst the '.format(internal_standard) +
                        'analytes in\nyour data files. Please make sure it is specified correctly.')
         self.minimal_analytes = set([internal_standard])
 
@@ -332,6 +335,7 @@ class analyse(object):
                                  len(self.stds),
                                  len(self.data) - len(self.stds)))
         print('  Analytes: ' + ' '.join(self.analytes))
+
         print('  Internal Standard: {}'.format(self.internal_standard))
 
     def _get_samples(self, subset=None):
@@ -1068,6 +1072,7 @@ class analyse(object):
 
                 prog.update()
 
+
     @_log
     def bkg_plot(self, analytes=None, figsize=None, yscale='log',
                  ylim=None, err='stderr', save=True):
@@ -1262,7 +1267,7 @@ class analyse(object):
             # convert to table in same format as stdtab
             self.srmdat = srmdat.dropna(how='all')
     
-    def srm_compile_measured(self, n_min=10):
+    def srm_compile_measured(self, n_min=10, filt=True):
         # compile mean and standard errors of samples
         for s in self.stds:
             stdtab = pd.DataFrame(columns=pd.MultiIndex.from_product([s.analytes, ['err', 'mean']]))
@@ -1272,7 +1277,8 @@ class analyse(object):
                 ind = s.ns == n
                 if sum(ind) >= n_min:
                     for a in s.analytes:
-                        aind = ind & ~np.isnan(nominal_values(s.focus[a]))
+                        find = s.filt.grab_filt(filt, a)
+                        aind = ind & ~np.isnan(nominal_values(s.focus[a])) & find
                         stdtab.loc[np.nanmean(s.uTime[s.ns == n]),
                                    (a, 'mean')] = np.nanmean(s.focus[a][aind])
                         stdtab.loc[np.nanmean(s.uTime[s.ns == n]),
@@ -1316,7 +1322,7 @@ class analyse(object):
             self.stdtab.loc[ind, 'gTime'] = self.stdtab.loc[ind].index.values.mean()
 
 
-    def srm_id_auto(self, srms_used=['NIST610', 'NIST612', 'NIST614'], n_min=10, reload_srm_database=False):
+    def srm_id_auto(self, srms_used=['NIST610', 'NIST612', 'NIST614'], n_min=10, reload_srm_database=False, filt=True):
         """
         Function for automarically identifying SRMs
     
@@ -1333,7 +1339,7 @@ class analyse(object):
             srms_used = [srms_used]
             
         # get mean and standard deviations of measured standards
-        self.srm_compile_measured(n_min)
+        self.srm_compile_measured(n_min, filt)
         stdtab = self.stdtab.copy()
 
         # load corresponding SRM database
@@ -1430,7 +1436,7 @@ class analyse(object):
     @_log
     def calibrate(self, analytes=None, drift_correct=True,
                   srms_used=['NIST610', 'NIST612', 'NIST614'],
-                  zero_intercept=True, n_min=10, reload_srm_database=False):
+                  zero_intercept=True, n_min=10, reload_srm_database=False, srmfilt=False):
         """
         Calibrates the data to measured SRM values.
 
@@ -1461,7 +1467,7 @@ class analyse(object):
             analytes = [analytes]
 
         if not hasattr(self, 'srmtabs'):
-            self.srm_id_auto(srms_used=srms_used, n_min=n_min, reload_srm_database=reload_srm_database)
+            self.srm_id_auto(srms_used=srms_used, n_min=n_min, reload_srm_database=reload_srm_database, filt=srmfilt)
 
         # make container for calibration params
         if not hasattr(self, 'calib_params'):
@@ -2987,11 +2993,15 @@ class analyse(object):
         # sort analytes
         try:
             analytes = sorted(analytes, key=lambda x: float(re.findall('[0-9.-]+', x)[0]))
-        except IndexError:
+        except IndexError as e:
+            print(e)
             analytes = sorted(analytes)
 
         self.get_focus(filt=filt, samples=samples, subset=subset)
-
+        for a in analytes:
+            if np.nanmean(self.focus[a]) == 0:
+                analytes.remove(a, 'is removed from the plot.')
+                print(a)
         fig, axes = plot.crossplot(dat=self.focus, keys=analytes, lognorm=lognorm,
                                    bins=bins, figsize=figsize, colourful=colourful,
                                    focus_stage=self.focus_stage, cmap=self.cmaps,
@@ -3340,14 +3350,13 @@ class analyse(object):
 
         # if samples is not None:
         #     subset = self.make_subset(samples)
-
-        if subset is not None:
+        if subset is not 'All_Analyses':
             samples = self._get_samples(subset)
         elif samples is None:
             samples = self.subsets['All_Analyses']
         elif isinstance(samples, str):
             samples = [samples]
-        
+
         with self.pbar.set(total=len(samples), desc='Drawing Plots') as prog:
             for s in samples:
                 f, a = self.data[s].tplot(analytes=analytes, figsize=figsize,
@@ -3359,12 +3368,13 @@ class analyse(object):
                 #     ax.axvspan(l, u, color='r', alpha=0.1)
                 # for l, u in s.bkgrng:
                 #     ax.axvspan(l, u, color='k', alpha=0.1)
-                f.savefig(outdir + '/' + s + '_traces.pdf')
+                f.savefig(outdir + '/' + s + '_traces.pdf') 
                 # TODO: on older(?) computers raises
                 # 'OSError: [Errno 24] Too many open files'
-                plt.close(f)
+                # plt.close(f)
+                # print("a")
                 prog.update()
-        return
+        return 
 
     # Plot gradients
     @_log
@@ -4014,6 +4024,45 @@ class analyse(object):
         
         return
 
+    def sample_branch_append(self, newfiles, original_samples, errorhunt=False ):
+        if len(newfiles) != len(original_samples):
+            raise ValueError("The length of newfiles and original_samples should be the same.")
+        
+        for f, ors in zip(newfiles, original_samples):
+            copied_obj = E(self.data[ors].file,
+                            self.data[ors],
+                            dataformat=self.dataformat,
+                            errorhunt=errorhunt,
+                            name=f)
+            self.data.update({copied_obj.sample : copied_obj})
+        all_samples = np.array(list(self.data.keys()), dtype=object)  # get all sample names
+        self.samples = all_samples
+        return
+
+
+
+    def sample_branch_prepare(self, samples=None, newfnames=None, double = True):
+        
+        newfiles = np.array([], dtype = 'object') 
+        for i, s in enumerate(samples):
+            if newfnames == None:
+                nf1 = s + '-with-inc'
+                nf2 = s + '-excl-inc'
+                nf3 = s + '-selected'
+            else:
+                nf1 = newfnames[i] + 'with-inc'
+                nf2 = newfnames[i] + 'excl-inc'
+                nf3 = newfnames[i] 
+            if double:
+                newfiles = np.append(newfiles, nf1)
+                newfiles = np.append(newfiles, nf2)
+            else:
+                newfiles = np.append(newfiles, nf3)
+
+        return newfiles
+
+ 
+
 
 def reproduce(past_analysis, plotting=False, data_folder=None,
               srm_table=None, custom_stat_functions=None):
@@ -4089,3 +4138,6 @@ def reproduce(past_analysis, plotting=False, data_folder=None,
                 getattr(rep, fname)(*arg['args'], **arg['kwargs'])
 
     return rep
+             
+        
+

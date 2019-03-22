@@ -90,6 +90,9 @@ def by_regex(file, outdir=None, split_pattern=None, global_header_rows=0, fname_
     return outdir
 
 def long_file(data_file, dataformat, sample_list, savedir=None, srm_id=None, **autorange_args):
+    """
+    TODO: Check for existing files in savedir, don't overwrite?
+    """
     if isinstance(sample_list, str):
         if os.path.exists(sample_list):
             sample_list = np.genfromtxt(sample_list, dtype=str)
@@ -113,7 +116,8 @@ def long_file(data_file, dataformat, sample_list, savedir=None, srm_id=None, **a
     else:
         d = datetime.datetime.now()
     # autorange
-    bkg, sig, trn, _ = autorange(dat['Time'], dat['total_counts'], **autorange_args)
+    #dat['rawdata']['57Fe'] = np.where(dat['rawdata']['57Fe']==0, 1, dat['rawdata']['57Fe'])
+    bkg, sig, trn, _ = autorange(dat['Time'], dat['rawdata']['57Fe'], **autorange_args)
     
     ns = np.zeros(sig.size)
     ns[sig] = np.cumsum((sig ^ np.roll(sig, 1)) & sig)[sig]
@@ -165,6 +169,8 @@ def long_file(data_file, dataformat, sample_list, savedir=None, srm_id=None, **a
     # save output
     if savedir is None:
         savedir = os.path.join(os.path.dirname(os.path.abspath(data_file)), os.path.splitext(os.path.basename(data_file))[0] + '_split')
+
+    print(savedir)
     if not os.path.isdir(savedir):
         os.makedirs(savedir)
     

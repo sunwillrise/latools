@@ -362,6 +362,7 @@ class D(object):
             raise ValueError('Invalid analyte.')
 
         if transform == 'log':
+            sig = np.where(sig==0, 1, sig)
             sig = np.log10(sig)
 
         fig, axs = plot.autorange_plot(t=self.Time, sig=sig, gwin=gwin,
@@ -1096,7 +1097,7 @@ class D(object):
         return
     
     @_log
-    def filter_trim(self, start=1, end=1, filt=True):
+    def filter_trim(self, start=0, end=0, filt=True):
         """
         Remove points from the start and end of filter regions.
         
@@ -1119,6 +1120,42 @@ class D(object):
                     nf,
                     'Trimmed Filter ({:.0f} start, {:.0f} end)'.format(start, end),
                     params, setn=self.filt.maxset + 1)
+
+       
+    @_log
+    def filter_select_range(self, startIndex=None, endIndex=None, filt=True):
+        """
+        Select the start and the end of the filter regions manually.
+        
+        Parameters
+        ----------
+        startIndex, endIndex : int
+            The number of points to remove from the start and end of
+            the specified filter.
+        filt : valid filter string or bool
+            Which filter to trim. If True, applies to currently active
+            filters.
+        """
+        params = locals()
+        del(params['self'])
+            
+        f = self.filt.grab_filt(filt)
+
+        if startIndex == None:
+            startIndex = filters.get_start_index(self.sig)
+        if endIndex == None:
+            endIndex = filters.get_end_index(self.sig)
+        
+       
+        # print("startIndex = ", startIndex, "endIndex = ", endIndex)
+        nf = filters.select_range(f, startIndex, endIndex)
+        print("startIndex = ", startIndex, "endIndex = ", endIndex)
+
+        self.filt.add('Ranges-{:.0f}-{:.0f}'.format(startIndex, endIndex),
+                    nf,
+                    'Filter Ranges Selected ({:.0f} startIndex, {:.0f} endIndex)'.format(startIndex, endIndex),
+                    params, setn=self.filt.maxset + 1)
+
 
     @_log
     def filter_exclude_downhole(self, threshold, filt=True):
@@ -1659,3 +1696,21 @@ class D(object):
         out['filter_used'] = self.filt.make_keydict()
 
         return out
+
+class E(D):
+    def __init__(self, data_file, d_obj, dataformat=None, errorhunt=False, name='file_names'):
+        super().__init__(data_file, dataformat=dataformat, errorhunt=errorhunt, cmap=d_obj.cmap, internal_standard=d_obj.internal_standard, name=name)
+        self.data = d_obj.data
+        self.focus = d_obj.focus
+        self.focus_stage = d_obj.focus_stage
+        self.sig = d_obj.sig   
+        self.bkg = d_obj.bkg   
+        self.trn = d_obj.trn   
+        self.sigrng = d_obj.sigrng   
+        self.bkgrng = d_obj.bkgrng
+        self.trnrng = d_obj.trnrng
+        self.ns = d_obj.ns
+
+        return
+
+

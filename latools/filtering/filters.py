@@ -106,5 +106,51 @@ def trim(ind, start=1, end=0):
         Which filter to trim. If True, applies to currently active
         filters.
     """
-
     return np.roll(ind, start) & np.roll(ind, -end)
+
+def select_range(ind, startIndex, endIndex):
+    """
+    Select the start and/or the end of the True regions.
+    
+    Parameters
+    ----------
+    startIndex, endIndex : int
+        The index of the start and the end of the True region you wish to get.
+    ind : boolean array
+        Which filter to trim. If True, applies to currently active filters.
+    """
+    ind2 = np.full_like(ind, False)
+    ind2[startIndex : endIndex] = True
+
+    return ind2
+
+def get_start_index(ind):
+    """
+    Returns the index of the first True of the given ind array.
+     
+    Parameters
+    ----------
+    ind : boolean array
+        Which filter to trim. If True, applies to currently active filters.
+    """
+
+    indexT = np.where(ind == True)
+    return indexT[0][0]
+
+def get_end_index(ind):
+    """
+    Returns the index of the last True of the given ind array.
+     
+    Parameters
+    ----------
+    ind : boolean array
+        Which filter to trim. If True, applies to currently active filters.
+    """
+
+    indexT = np.where(ind == True)
+    return indexT[0][len(indexT[0])-1]
+
+
+    
+
+ 

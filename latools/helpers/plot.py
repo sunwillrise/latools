@@ -288,7 +288,7 @@ def crossplot(dat, keys=None, lognorm=True, bins=25, figsize=(12, 12),
         figsize = [1.5 * numvar] * 2
     
     fig, axes = plt.subplots(nrows=numvar, ncols=numvar,
-                             figsize=(12, 12))
+                             figsize=figsize)
     fig.subplots_adjust(hspace=0.05, wspace=0.05)
 
     for ax in axes.flat:
@@ -329,6 +329,7 @@ def crossplot(dat, keys=None, lognorm=True, bins=25, figsize=(12, 12),
     rdict = {a: (np.nanmin(focus[a] * udict[a][0]),
                  np.nanmax(focus[a] * udict[a][0])) for a in keys}
 
+
     for i, j in tqdm(zip(*np.triu_indices_from(axes, k=1)), desc='Drawing Plots',
                      total=sum(range(len(keys)))):
         # get analytes
@@ -367,19 +368,19 @@ def crossplot(dat, keys=None, lognorm=True, bins=25, figsize=(12, 12),
         else:
             raise ValueError("invalid mode. Must be 'hist2d' or 'scatter'.")
 
-        axes[i, j].set_ylim(*rdict[ai])
-        axes[i, j].set_xlim(*rdict[aj])
+        #axes[i, j].set_ylim(*rdict[ai])
+        #axes[i, j].set_xlim(*rdict[aj])
 
-        axes[j, i].set_ylim(*rdict[aj])
-        axes[j, i].set_xlim(*rdict[ai])
+        #axes[j, i].set_ylim(*rdict[aj])
+        #axes[j, i].set_xlim(*rdict[ai])
 
     # diagonal labels
     for a, n in zip(keys, np.arange(len(keys))):
         axes[n, n].annotate(a + '\n' + udict[a][1], (0.5, 0.5),
                             xycoords='axes fraction',
                             ha='center', va='center', fontsize=8)
-        axes[n, n].set_xlim(*rdict[a])
-        axes[n, n].set_ylim(*rdict[a])
+        #axes[n, n].set_xlim(*rdict[a])
+        #axes[n, n].set_ylim(*rdict[a])
     # switch on alternating axes
     for i, j in zip(range(numvar), itertools.cycle((-1, 0))):
         axes[j, i].xaxis.set_visible(True)

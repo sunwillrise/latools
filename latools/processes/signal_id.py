@@ -76,6 +76,7 @@ def autorange(t, sig, gwin=7, swin=None, win=30,
 
     # transform signal
     if transform == 'log':
+        sigs = np.where(sigs==0, 1, sigs)
         tsigs = np.log10(sigs)
     else:
         tsigs = sigs
